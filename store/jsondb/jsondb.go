@@ -38,17 +38,22 @@ func New(dbPath string) (*JsonDB, error) {
 func (o *JsonDB) Init() error {
 	var clientPath string = path.Join(o.dbPath, "clients")
 	var serverPath string = path.Join(o.dbPath, "server")
+	var usersPath string = path.Join(o.dbPath, "users")
 	var wakeOnLanHostsPath string = path.Join(o.dbPath, "wake_on_lan_hosts")
 	var serverInterfacePath string = path.Join(serverPath, "interfaces.json")
 	var serverKeyPairPath string = path.Join(serverPath, "keypair.json")
 	var globalSettingPath string = path.Join(serverPath, "global_settings.json")
-	var userPath string = path.Join(serverPath, "users.json")
+	var defaultUserPath string = path.Join(usersPath, "default_user.json")
+
 	// create directories if they do not exist
 	if _, err := os.Stat(clientPath); os.IsNotExist(err) {
 		os.MkdirAll(clientPath, os.ModePerm)
 	}
 	if _, err := os.Stat(serverPath); os.IsNotExist(err) {
 		os.MkdirAll(serverPath, os.ModePerm)
+	}
+	if _, err := os.Stat(usersPath); os.IsNotExist(err) {
+		os.MkdirAll(usersPath, os.ModePerm)
 	}
 	if _, err := os.Stat(wakeOnLanHostsPath); os.IsNotExist(err) {
 		os.MkdirAll(wakeOnLanHostsPath, os.ModePerm)
@@ -98,29 +103,44 @@ func (o *JsonDB) Init() error {
 		o.conn.Write("server", "global_settings", globalSetting)
 	}
 
-	// user info
-	if _, err := os.Stat(userPath); os.IsNotExist(err) {
-		user := new(model.User)
-		user.Username = util.LookupEnvOrString(util.UsernameEnvVar, util.DefaultUsername)
-		user.PasswordHash = util.LookupEnvOrString(util.PasswordHashEnvVar, "")
-		if user.PasswordHash == "" {
+	// default user info
+	if _, err := os.Stat(defaultUserPath); os.IsNotExist(err) {
+		defaultUser := new(model.User)
+		defaultUser.Username = util.LookupEnvOrString(util.UsernameEnvVar, util.DefaultUsername)
+		defaultUser.Role = "admin"
+		defaultUser.PasswordHash = util.LookupEnvOrString(util.PasswordHashEnvVar, "")
+		if defaultUser.PasswordHash == "" {
 			plaintext := util.LookupEnvOrString(util.PasswordEnvVar, util.DefaultPassword)
 			hash, err := util.HashPassword(plaintext)
 			if err != nil {
 				return err
 			}
-			user.PasswordHash = hash
+			defaultUser.PasswordHash = hash
 		}
-		o.conn.Write("server", "users", user)
+		o.conn.Write("users", "default_user", defaultUser)
 	}
 
 	return nil
 }
 
-// GetUser func to query user info from the database
-func (o *JsonDB) GetUser() (model.User, error) {
-	user := model.User{}
-	return user, o.conn.Read("server", "users", &user)
+// GetUsers func to query user list from the database
+func (o *JsonDB) GetUsers() ([]model.User, error) {
+	users := []model.User{}
+
+	records, err := o.conn.ReadAll("users")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range records {
+		user := model.User{}
+		if err := json.Unmarshal([]byte(v), &user); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
 }
 
 // GetGlobalSettings func to query global settings from the database

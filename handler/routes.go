@@ -45,47 +45,49 @@ func Login(db store.IStore) echo.HandlerFunc {
 		user := new(model.User)
 		c.Bind(user)
 
-		dbuser, err := db.GetUser()
+		dbusers, err := db.GetUsers()
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{false, "Cannot query user from DB"})
+			return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{false, "Cannot query users from DB"})
 		}
 
-		userCorrect := subtle.ConstantTimeCompare([]byte(user.Username), []byte(dbuser.Username)) == 1
+		for _, dbuser := range dbusers {
+			userCorrect := subtle.ConstantTimeCompare([]byte(user.Username), []byte(dbuser.Username)) == 1
 
-		var passwordCorrect bool
-		if dbuser.PasswordHash != "" {
-			match, err := util.VerifyHash(dbuser.PasswordHash, user.Password)
-			if err != nil {
-				return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{false, "Cannot verify password"})
-			}
-			passwordCorrect = match
-		} else {
-			passwordCorrect = subtle.ConstantTimeCompare([]byte(user.Password), []byte(dbuser.Password)) == 1
-		}
-
-		if userCorrect && passwordCorrect {
-			// TODO: refresh the token
-			sess, _ := session.Get("session", c)
-			sess.Options = &sessions.Options{
-				Path:     util.BasePath,
-				MaxAge:   86400,
-				HttpOnly: true,
+			var passwordCorrect bool
+			if dbuser.PasswordHash != "" {
+				match, err := util.VerifyHash(dbuser.PasswordHash, user.Password)
+				if err != nil {
+					return c.JSON(http.StatusInternalServerError, jsonHTTPResponse{false, "Cannot verify password"})
+				}
+				passwordCorrect = match
+			} else {
+				passwordCorrect = subtle.ConstantTimeCompare([]byte(user.Password), []byte(dbuser.Password)) == 1
 			}
 
-			// set session_token
-			tokenUID := xid.New().String()
-			sess.Values["username"] = user.Username
-			sess.Values["session_token"] = tokenUID
-			sess.Save(c.Request(), c.Response())
+			if userCorrect && passwordCorrect {
+				// TODO: refresh the token
+				sess, _ := session.Get("session", c)
+				sess.Options = &sessions.Options{
+					Path:     util.BasePath,
+					MaxAge:   86400,
+					HttpOnly: true,
+				}
 
-			// set session_token in cookie
-			cookie := new(http.Cookie)
-			cookie.Name = "session_token"
-			cookie.Value = tokenUID
-			cookie.Expires = time.Now().Add(24 * time.Hour)
-			c.SetCookie(cookie)
+				// set session_token
+				tokenUID := xid.New().String()
+				sess.Values["username"] = user.Username
+				sess.Values["session_token"] = tokenUID
+				sess.Save(c.Request(), c.Response())
 
-			return c.JSON(http.StatusOK, jsonHTTPResponse{true, "Logged in successfully"})
+				// set session_token in cookie
+				cookie := new(http.Cookie)
+				cookie.Name = "session_token"
+				cookie.Value = tokenUID
+				cookie.Expires = time.Now().Add(24 * time.Hour)
+				c.SetCookie(cookie)
+
+				return c.JSON(http.StatusOK, jsonHTTPResponse{true, "Logged in successfully"})
+			}
 		}
 
 		return c.JSON(http.StatusUnauthorized, jsonHTTPResponse{false, "Invalid credentials"})

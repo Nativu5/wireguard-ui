@@ -6,7 +6,7 @@ import (
 
 type IStore interface {
 	Init() error
-	GetUser() (model.User, error)
+	GetUsers() ([]model.User, error)
 	GetGlobalSettings() (model.GlobalSetting, error)
 	GetServer() (model.Server, error)
 	GetClients(hasQRCode bool) ([]model.ClientData, error)
