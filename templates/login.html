@@ -85,14 +85,14 @@
         if (nextURL) {
             window.location.href = nextURL;
         } else {
-            window.location.href = '/wireguard/';
+            window.location.href = '/{{.basePath}}';
         } 
     }
 </script>
 <script>
     $(document).ready(function () {
         $('form').on('submit', function(e) {
-            e.preventDefault();
+            e.preventDefault(); 
             $("#btn_login").trigger('click');
         });
 
