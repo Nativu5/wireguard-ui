@@ -117,7 +117,7 @@ func (o *JsonDB) Init() error {
 			}
 			defaultUser.PasswordHash = hash
 		}
-		o.conn.Write("users", "default_user", defaultUser)
+		o.conn.Write("users", defaultUser.Username, defaultUser)
 	}
 
 	return nil

@@ -14,9 +14,9 @@ func ValidSession(next echo.HandlerFunc) echo.HandlerFunc {
 		if !isValidSession(c) {
 			nextURL := c.Request().URL
 			if nextURL != nil && c.Request().Method == http.MethodGet {
-				return c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf(util.BasePath + "/login?next=%s", c.Request().URL))
+				return c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf(util.BasePath+"/login?next=%s", c.Request().URL))
 			} else {
-				return c.Redirect(http.StatusTemporaryRedirect, util.BasePath + "/login")
+				return c.Redirect(http.StatusTemporaryRedirect, util.BasePath+"/login")
 			}
 		}
 		return next(c)
@@ -50,6 +50,7 @@ func currentUser(c echo.Context) string {
 func clearSession(c echo.Context) {
 	sess, _ := session.Get("session", c)
 	sess.Values["username"] = ""
+	sess.Values["role"] = ""
 	sess.Values["session_token"] = ""
 	sess.Save(c.Request(), c.Response())
 }

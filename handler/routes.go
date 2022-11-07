@@ -75,7 +75,8 @@ func Login(db store.IStore) echo.HandlerFunc {
 
 				// set session_token
 				tokenUID := xid.New().String()
-				sess.Values["username"] = user.Username
+				sess.Values["username"] = dbuser.Username
+				sess.Values["role"] = dbuser.Role
 				sess.Values["session_token"] = tokenUID
 				sess.Save(c.Request(), c.Response())
 
